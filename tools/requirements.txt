@@ -1,1 +1,4 @@
+cairosvg
 espn_api
+pillow
+requests
