@@ -1,6 +1,7 @@
 from .constant import POSITION_MAP, PRO_TEAM_MAP, PLAYER_STATS_MAP
 from .player import Player
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
+from adafruit_datetime import datetime, timedelta
 
 
 class BoxPlayer(Player):

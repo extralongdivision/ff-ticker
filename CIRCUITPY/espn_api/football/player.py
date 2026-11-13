@@ -2,7 +2,8 @@ from .constant import POSITION_MAP, PRO_TEAM_MAP, PLAYER_STATS_MAP
 from .transaction import Transaction
 from .utils import json_parsing
 from ..utils.trade_fill import player_transactions
-from datetime import datetime
+# from datetime import datetime
+from adafruit_datetime import datetime
 
 
 class Player(object):

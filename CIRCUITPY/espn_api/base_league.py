@@ -1,5 +1,5 @@
-from abc import ABC
-from typing import List, Tuple
+# from abc import ABC
+# from typing import List, Tuple
 
 from .base_settings import BaseSettings
 from .base_pick import BasePick
@@ -13,7 +13,8 @@ from .utils.trade_fill import (
 from .requests.espn_requests import EspnFantasyRequests
 
 
-class BaseLeague(ABC):
+# class BaseLeague(ABC):
+class BaseLeague:
     """Creates a League instance for Public/Private ESPN league"""
 
     def __init__(
@@ -193,7 +194,8 @@ class BaseLeague(ABC):
 
         return bids
 
-    def standings(self) -> List:
+    # def standings(self) -> List:
+    def standings(self) -> list:
         standings = sorted(
             self.teams,
             key=lambda x: x.final_standing if x.final_standing != 0 else x.standing,
@@ -201,7 +203,8 @@ class BaseLeague(ABC):
         )
         return standings
 
-    def get_team_data(self, team_id: int) -> List:
+    # def get_team_data(self, team_id: int) -> List:
+    def get_team_data(self, team_id: int) -> list:
         for team in self.teams:
             if team_id == team.team_id:
                 return team

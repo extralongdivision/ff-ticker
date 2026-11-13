@@ -1,8 +1,54 @@
-import requests
+# import requests
+import adafruit_requests
 import json
+import os
+import socketpool
+import ssl
+import wifi
+
 from .constant import FANTASY_BASE_ENDPOINT, NEWS_BASE_ENDPOINT, FANTASY_SPORTS
 from ..utils.logger import Logger
-from typing import List
+# from typing import List
+
+wifi.radio.connect(os.getenv("CIRCUITPY_WIFI_SSID"), os.getenv("CIRCUITPY_WIFI_PASSWORD"))
+requests = adafruit_requests.Session(socketpool.SocketPool(wifi.radio), ssl.create_default_context())
+
+
+def req_kwargs2cpy_req_kwargs(params: dict = None, headers: dict = None, cookies: dict = None) -> dict:
+    h: dict
+    if params is not None:
+        h = params
+    elif headers is not None:
+        h = headers
+    elif cookies is not None:
+        h = cookies
+    else:
+        raise RuntimeError("All params None somehow.")
+
+    try:
+        h.update(params)
+    except TypeError:
+        pass  # headers is None
+    try:
+        h.update(headers)
+    except TypeError:
+        pass  # headers is Non
+    try:
+        h.update(cookies)
+    except TypeError:
+        pass  # cookies is None
+
+    # if "Cookie" not in h.keys():
+    h["cookie"] = f"SWID={os.getenv('SWID')}; espn_s2={os.getenv('ESPN_S2')}"  # TODO
+    # h["cookie"] = str({"espn_s2": os.getenv("ESPN_S2"), "SWID": os.getenv("SWID")})
+
+    # if "espn_s2" not in h.keys():
+    #     h["espn_s2"] = os.getenv("ESPN_S2")
+    # if "SWID" not in h.keys():
+    #     h["SWID"] = os.getenv("SWID")
+    # h["SWID"].replace("{", "")
+    # h["SWID"].replace("}", "")
+    return h
 
 
 class ESPNAccessDenied(Exception):
@@ -65,11 +111,16 @@ class EspnFantasyRequests(object):
                 base_endpoint = self.LEAGUE_ENDPOINT.split(f"/seasons/")[0]
                 alternate_endpoint = f"{base_endpoint}/leagueHistory/{self.league_id}?seasonId={self.year}"
 
+            headers = req_kwargs2cpy_req_kwargs(params, headers, self.cookies)
+            # r = requests.get(
+            #     alternate_endpoint + extend,
+            #     params=params,
+            #     headers=headers,
+            #     cookies=self.cookies,
+            # )
             r = requests.get(
                 alternate_endpoint + extend,
-                params=params,
                 headers=headers,
-                cookies=self.cookies,
             )
 
             if r.status_code == 200:
@@ -105,7 +156,25 @@ class EspnFantasyRequests(object):
 
     def league_get(self, params: dict = None, headers: dict = None, extend: str = ""):
         endpoint = self.LEAGUE_ENDPOINT + extend
-        r = requests.get(endpoint, params=params, headers=headers, cookies=self.cookies)
+        h = req_kwargs2cpy_req_kwargs(params, headers, self.cookies)
+        # r = requests.get(endpoint, params=params, headers=headers, cookies=self.cookies)
+        print(f"Headers is: {h}; params is {params}, headers is {headers}, cookies is {self.cookies}")
+        for key in h.keys():
+            h[key] = str(h[key])
+        print(f"Headers is: {h}\nparams is {params}\nheaders is {headers}\ncookies is {self.cookies}")
+        if params is not None:
+            endpoint += "?"
+            for param in params["view"].split(","):
+                param = param.replace("[", "")
+                param = param.replace("]", "")
+                param = param.replace("'", "")
+                param = param.strip()
+                endpoint += f"view={param}&"
+            if endpoint.endswith("&"):
+                endpoint = endpoint[:-1]
+        print(f"endpoint is {endpoint}")
+        r = requests.get(endpoint, headers=h)
+        print(f"Response code is {r.status_code}")
         alternate_response = self.checkRequestStatus(
             r.status_code, extend=extend, params=params, headers=headers
         )
@@ -205,9 +274,11 @@ class EspnFantasyRequests(object):
 
     def get_player_card(
         self,
-        playerIds: List[int],
+        # playerIds: List[int],
+        playerIds: list[int],
         max_scoring_period: int,
-        additional_filters: List = None,
+        # additional_filters: List = None,
+        additional_filters: list = None,
     ):
         """Gets the player card"""
         params = {"view": "kona_playercard"}
@@ -230,7 +301,7 @@ class EspnFantasyRequests(object):
         data = self.league_get(params=params, headers=headers)
         return data
 
-    def get_player_pool_ids(self, week: int, page_size: int = 500) -> List[int]:
+    def get_player_pool_ids(self, week: int, page_size: int = 500) -> list[int]: # List[int]:
         """Player ids in the league pool (rostered, FA, waivers) for card fetches."""
         found = []
         seen = set()

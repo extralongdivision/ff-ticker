@@ -1,19 +1,30 @@
-from typing import Any, Optional
+# from typing import Any, Optional
 
 
 class BasePick(object):
     """Pick represents a pick in draft"""
 
+    # def __init__(
+    #     self,
+    #     team: Optional[Any],
+    #     playerId: Optional[int],
+    #     playerName: str,
+    #     round_num: Optional[int],
+    #     round_pick: Optional[int],
+    #     bid_amount: Optional[int],
+    #     keeper_status: Optional[bool],
+    #     nominatingTeam: Optional[Any],
+    # ) -> None:
     def __init__(
-        self,
-        team: Optional[Any],
-        playerId: Optional[int],
-        playerName: str,
-        round_num: Optional[int],
-        round_pick: Optional[int],
-        bid_amount: Optional[int],
-        keeper_status: Optional[bool],
-        nominatingTeam: Optional[Any],
+            self,
+            team,
+            playerId,
+            playerName: str,
+            round_num,
+            round_pick,
+            bid_amount,
+            keeper_status,
+            nominatingTeam,
     ) -> None:
         self.team = team
         self.playerId = playerId

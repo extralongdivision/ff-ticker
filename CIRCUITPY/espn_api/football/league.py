@@ -1,6 +1,6 @@
 import json
 import random
-from typing import Callable, Dict, List, Set, Tuple, Union
+# from typing import Callable, Dict, List, Set, Tuple, Union
 
 from ..base_league import BaseLeague
 from .team import Team
@@ -123,7 +123,8 @@ class League(BaseLeague):
             roster = team_roster[team.team_id]
             team._fetch_roster(roster, self.year)
 
-    def standings(self) -> List[Team]:
+    # def standings(self) -> List[Team]:
+    def standings(self) -> list[Team]:
         standings = sorted(
             self.teams,
             key=lambda x: x.final_standing if x.final_standing != 0 else x.standing,
@@ -131,7 +132,8 @@ class League(BaseLeague):
         )
         return standings
 
-    def standings_weekly(self, week: int) -> List[Team]:
+    # def standings_weekly(self, week: int) -> List[Team]:
+    def standings_weekly(self, week: int) -> list[Team]:
         """This is the main function to get the standings for a given week.
 
         It controls the tiebreaker hierarchy and calls the recursive League()._sort_team_data_list function.
@@ -256,7 +258,8 @@ class League(BaseLeague):
         most_pa = sorted(self.teams, key=lambda x: x.points_against, reverse=True)
         return most_pa[0]
 
-    def top_scored_week(self) -> Tuple[Team, int]:
+    # def top_scored_week(self) -> Tuple[Team, int]:
+    def top_scored_week(self) -> tuple[Team | int]:
         top_week_points = []
         for team in self.teams:
             top_week_points.append(max(team.scores[: self.current_week]))
@@ -264,7 +267,8 @@ class League(BaseLeague):
         top_tup = sorted(top_scored_tup, key=lambda tup: float(tup[1]), reverse=True)
         return top_tup[0]
 
-    def least_scored_week(self) -> Tuple[Team, int]:
+    # def least_scored_week(self) -> Tuple[Team, int]:
+    def least_scored_week(self) -> tuple[Team | int]:
         least_week_points = []
         for team in self.teams:
             least_week_points.append(min(team.scores[: self.current_week]))
@@ -274,9 +278,12 @@ class League(BaseLeague):
         )
         return least_tup[0]
 
+    #def recent_activity(
+    #    self, size: int = 25, msg_type: str = None, offset: int = 0
+    #) -> List[Activity]:
     def recent_activity(
-        self, size: int = 25, msg_type: str = None, offset: int = 0
-    ) -> List[Activity]:
+               self, size: int = 25, msg_type: str = None, offset: int = 0
+            ) -> list[Activity]:
         """Returns a list of recent league activities (Add, Drop, Trade)"""
         if self.year < 2019:
             raise Exception("Cant use recent activity before 2019")
@@ -309,7 +316,8 @@ class League(BaseLeague):
 
         return activity
 
-    def scoreboard(self, week: int = None) -> List[Matchup]:
+    # def scoreboard(self, week: int = None) -> List[Matchup]:
+    def scoreboard(self, week: int = None) -> list[Matchup]:
         """Returns list of matchups for a given week"""
         if not week:
             week = self.current_week
@@ -335,9 +343,12 @@ class League(BaseLeague):
 
         return matchups
 
+    # def box_scores(
+    #     self, week: int = None, player_team_cache: dict = None
+    # ) -> List[BoxScore]:
     def box_scores(
-        self, week: int = None, player_team_cache: dict = None
-    ) -> List[BoxScore]:
+            self, week: int = None, player_team_cache: dict = None
+    ) -> list[BoxScore]:
         """Returns list of box score for a given week\n
         Should only be used with most recent season\n
         player_team_cache: optional dict mapping playerId -> proTeamId,
@@ -408,13 +419,20 @@ class League(BaseLeague):
         power_rank = power_points(dominance_matrix, teams_sorted, week)
         return power_rank
 
+    # def free_agents(
+    #     self,
+    #     week: int = None,
+    #     size: int = 50,
+    #     position: str = None,
+    #     position_id: int = None,
+    # ) -> List[Player]:
     def free_agents(
-        self,
-        week: int = None,
-        size: int = 50,
-        position: str = None,
-        position_id: int = None,
-    ) -> List[Player]:
+            self,
+            week: int = None,
+            size: int = 50,
+            position: str = None,
+            position_id: int = None,
+    ) -> list[Player]:
         """Returns a List of Free Agents for a Given Week\n
         Should only be used with most recent season"""
 
@@ -459,9 +477,12 @@ class League(BaseLeague):
             for player in players
         ]
 
+    # def player_info(
+    #     self, name: str = None, playerId: Union[int, list] = None
+    # ) -> Union[Player, List[Player]]:
     def player_info(
-        self, name: str = None, playerId: Union[int, list] = None
-    ) -> Union[Player, List[Player]]:
+            self, name: str = None, playerId: int | list = None
+    ):
         """Returns Player class if name found"""
 
         if name:
@@ -493,7 +514,7 @@ class League(BaseLeague):
                 for player in data["players"]
             ]
 
-    def message_board(self, msg_types: List[str] = None):
+    def message_board(self, msg_types: list[str] = None):
         """Returns a list of league messages"""
         data = self.espn_request.get_league_message_board(msg_types)
 
@@ -505,14 +526,22 @@ class League(BaseLeague):
                 messages.append(msg)
         return messages
 
+    # def transactions(
+    #     self,
+    #     scoring_period: int = None,
+    #     types: Set[str] = {"FREEAGENT", "WAIVER", "WAIVER_ERROR"},
+    #     fill_trade_items: bool = False,
+    #     player_ids: List[int] = None,
+    #     fill_from: str = "week",
+    # ) -> List[Transaction]:
     def transactions(
-        self,
-        scoring_period: int = None,
-        types: Set[str] = {"FREEAGENT", "WAIVER", "WAIVER_ERROR"},
-        fill_trade_items: bool = False,
-        player_ids: List[int] = None,
-        fill_from: str = "week",
-    ) -> List[Transaction]:
+            self,
+            scoring_period: int = None,
+            types: set[str] = {"FREEAGENT", "WAIVER", "WAIVER_ERROR"},
+            fill_trade_items: bool = False,
+            player_ids: list[int] = None,
+            fill_from: str = "week",
+    ) -> list[Transaction]:
         """Returns a list of recent transactions.
 
         TRADE_ACCEPT rows from mTransactions2 often have empty items except for
@@ -554,7 +583,8 @@ class League(BaseLeague):
         )
         return transactions
 
-    def offers_report(self, week: int = None) -> List[Offer]:
+    # def offers_report(self, week: int = None) -> List[Offer]:
+    def offers_report(self, week: int = None) -> list[Offer]:
         """Returns a list of all waiver/free agent auction offers sorted by timestamp and bid amount"""
 
         data = self._get_offers(week)

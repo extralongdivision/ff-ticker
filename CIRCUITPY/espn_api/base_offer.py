@@ -1,18 +1,26 @@
-from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+# from datetime import datetime
+from adafruit_datetime import datetime
+# from typing import Any, Callable, Dict, Optional
 
 
 class Offer(object):
     def __init__(
-        self, data: Dict[str, Any], player_map: Any, get_team_data: Callable[..., Any]
+        # self, data: Dict[str, Any], player_map: Any, get_team_data: Callable[..., Any]
+        self, data, player_map, get_team_data
     ) -> None:
         status = data["status"]
-        self.id: Any = data["id"]
-        self.dateTime: Optional[datetime] = None
-        self.amount: Optional[int] = None
-        self.teamId: Optional[int] = None
-        self.player: Optional[int] = None
-        self.droppedPlayer: Optional[int] = None
+        # self.id: Any = data["id"]
+        # self.dateTime: Optional[datetime] = None
+        # self.amount: Optional[int] = None
+        # self.teamId: Optional[int] = None
+        # self.player: Optional[int] = None
+        # self.droppedPlayer: Optional[int] = None
+        self.id = data["id"]
+        self.dateTime = None
+        self.amount = None
+        self.teamId = None
+        self.player = None
+        self.droppedPlayer = None
         if status == "CANCELED":
             self.result: str = "Canceled"
         else:

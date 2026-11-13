@@ -1,8 +1,9 @@
 import random
-from typing import Callable, Dict, List, Tuple
+# from typing import Callable, Dict, List, Tuple
 
 
-def build_division_record_dict(team_data_list: List[Dict]) -> Dict:
+# def build_division_record_dict(team_data_list: List[Dict]) -> Dict:
+def build_division_record_dict(team_data_list: list[dict]) -> dict:
     """Create a DataFrame with each team's divisional record."""
     # Create a dictionary with each team's divisional record
     div_outcomes = {
@@ -37,7 +38,8 @@ def build_division_record_dict(team_data_list: List[Dict]) -> Dict:
     return div_record
 
 
-def build_h2h_dict(team_data_list: List[Dict]) -> Dict:
+# def build_h2h_dict(team_data_list: List[Dict]) -> Dict:
+def build_h2h_dict(team_data_list: list[dict]) -> dict:
     """Create a dictionary with each team's divisional record."""
     # Create a dictionary with each team's head to head record
     h2h_outcomes = {
@@ -81,17 +83,20 @@ def build_h2h_dict(team_data_list: List[Dict]) -> Dict:
     return h2h_outcomes
 
 
-def sort_by_win_pct(team_data_list: List[Dict]) -> List[Dict]:
+# def sort_by_win_pct(team_data_list: List[Dict]) -> List[Dict]:
+def sort_by_win_pct(team_data_list: list[dict]) -> list[dict]:
     """Take a list of team standings data and sort it using the TOTAL_POINTS_SCORED tiebreaker"""
     return sorted(team_data_list, key=lambda x: x["win_pct"], reverse=True)
 
 
-def sort_by_points_for(team_data_list: List[Dict]) -> List[Dict]:
+# def sort_by_points_for(team_data_list: List[Dict]) -> List[Dict]:
+def sort_by_points_for(team_data_list: list[dict]) -> list[dict]:
     """Take a list of team standings data and sort it using the TOTAL_POINTS_SCORED tiebreaker"""
     return sorted(team_data_list, key=lambda x: x["points_for"], reverse=True)
 
 
-def sort_by_division_record(team_data_list: List[Dict]) -> List[Dict]:
+# def sort_by_division_record(team_data_list: List[Dict]) -> List[Dict]:
+def sort_by_division_record(team_data_list: list[dict]) -> list[dict]:
     """Take a list of team standings data and sort it using the 3rd level tiebreaker"""
     division_records = build_division_record_dict(team_data_list)
     for team_data in team_data_list:
@@ -99,12 +104,14 @@ def sort_by_division_record(team_data_list: List[Dict]) -> List[Dict]:
     return sorted(team_data_list, key=lambda x: x["division_record"], reverse=True)
 
 
-def sort_by_points_against(team_data_list: List[Dict]) -> List[Dict]:
+# def sort_by_points_against(team_data_list: List[Dict]) -> List[Dict]:
+def sort_by_points_against(team_data_list: list[dict]) -> list[dict]:
     """Take a list of team standings data and sort it using the 4th level tiebreaker"""
     return sorted(team_data_list, key=lambda x: x["points_against"], reverse=True)
 
 
-def sort_by_coin_flip(team_data_list: List[Dict]) -> List[Dict]:
+# def sort_by_coin_flip(team_data_list: List[Dict]) -> List[Dict]:
+def sort_by_coin_flip(team_data_list: list[dict]) -> list[dict]:
     """Take a list of team standings data and sort it using the 5th level tiebreaker"""
     for team_data in team_data_list:
         team_data["coin_flip"] = random.random()
@@ -112,8 +119,10 @@ def sort_by_coin_flip(team_data_list: List[Dict]) -> List[Dict]:
 
 
 def sort_by_head_to_head(
-    team_data_list: List[Dict],
-) -> List[Dict]:
+    # team_data_list: List[Dict],
+    team_data_list: list[dict],
+# ) -> List[Dict]:
+) -> list[dict]:
     """Take a list of team standings data and sort it using the H2H_RECORD tiebreaker"""
     # Create a dictionary with each team's head to head record
     h2h_dict = build_h2h_dict(team_data_list)
@@ -164,9 +173,12 @@ def sort_by_head_to_head(
 
 
 def sort_team_data_list(
-    team_data_list: List[Dict],
-    tiebreaker_hierarchy: List[Tuple[Callable, str]],
-) -> List[Dict]:
+    # team_data_list: List[Dict],
+    team_data_list: list[dict],
+    # tiebreaker_hierarchy: List[Tuple[Callable, str]],
+    tiebreaker_hierarchy,
+# ) -> List[Dict]:
+) -> list[dict]:
     """This recursive function sorts a list of team standings data by the tiebreaker hierarchy.
     It iterates through each tiebreaker, sorting any remaning ties by the next tiebreaker.
 
