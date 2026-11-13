@@ -6,6 +6,7 @@ import ssl
 import time
 
 # CircuitPython specific
+import adafruit_json_stream as json_stream
 import adafruit_logging as logging
 import adafruit_requests
 import board
@@ -57,10 +58,111 @@ class Env:
 class FantasyData:
     """Fantasy Football Data"""
 
-    def __init__(self, env: Env):
+    class League(AbstractLogger):
+        """Fantasy Football League"""
+
+        class Matchup:
+            """Data from a weekly matchup"""
+
+            def __init__(self, h_logo_fpath: str = "", h_abbv: str = "", h_score: float = 0.0, a_logo_fpath: str = "",
+                         a_abbv: str = "",
+                         a_score: float = 0.0, week: int = 1):
+                self.home_logo_fpath = h_logo_fpath
+                self.home_abbv = h_abbv
+                self.home_score = h_score
+                self.away_logo_fpath = a_logo_fpath
+                self.away_abbv = a_abbv
+                self.away_score = a_score
+                self.week_num = week
+
+        def __init__(self, league_id: int, network: "Network"):
+            super().__init__()
+            self._network = network
+            self._league_id = league_id
+            self._headers = {"cookie": f"SWID={os.getenv('SWID')}; espn_s2={os.getenv('ESPN_S2')}"}
+            self._year = ""
+            self._update_year()
+            self._matchups = self._fetch_matchups()
+
+        def _fetch_matchups(self) -> list["Matchup"]:
+            teams = self._fetch_teams()
+            week = teams["week"]
+            r = self._network.get(self._matchup_url, headers=self._headers)
+            if not (r.status_code == 200):
+                self.logger.error(f"Failed to query ESPN Matchup API ({r.status_code})")
+                return []
+
+            match_data = json_stream.load(r.iter_content(32))
+            matches_data = []
+            for m in match_data["schedule"]:
+                if m["matchupPeriodId"] != week:
+                    continue
+                matches_data.append(m)
+                break
+
+            matchups = []
+            for idx, match in enumerate(match_data):
+                matchups.append(self.Matchup(week=week))
+                matchup = matchups[idx]
+
+                home_team_id = match["home"]["teamId"]
+                matchup.home_logo_fpath = f"logos/{self._league_id}_{home_team_id}.bmp"
+                matchup.home_abbv = teams[int(home_team_id)]
+
+                away_team_id = match["away"]["teamId"]
+                matchup.away_logo_fpath = f"logos/{self._league_id}_{away_team_id}.bmp"
+                matchup.away_abbv = teams[int(away_team_id)]
+                if match["winner"] != "UNDECIDED":
+                    pass
+                matchup.home_score = 0.0
+                matchup.away_score = 0.0
+
+            print(m)
+            self.logger.info(m)
+
+        def _fetch_teams(self) -> dict:
+            self.logger.debug("Fetching matchups...")
+            r = self._network.get(self._league_url, headers=self._headers)
+            if not (r.status_code == 200):
+                self.logger.error(f"Failed to query ESPN League API ({r.status_code}) ({self._league_url})")
+                return {}
+            data = r.json()
+            teams_data = {"week": data["scoringPeriodId"]}
+            [teams_data.update({team["id"]: team["abbrev"]}) for team in data["teams"]]
+            r.close()
+            return teams_data
+
+        def _update_year(self) -> None:
+            r = self._network.get(self._base_url, headers=self._headers)
+            if not (r.status_code == 200):
+                self._year = "2026"
+            self._year = r.json()[0]["abbrev"][-4:]
+
+        @property
+        def _base_url(self) -> str:
+            return "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/"
+
+        @property
+        def _league_url(self) -> str:
+            return self._base_url + f"{self._year}/segments/0/leagues/{self._league_id}/"
+
+        @property
+        def _matchup_url(self) -> str:
+            return self._league_url + "?view=mMatchup"
+
+
+    def __init__(self, env: Env, network: "Network"):
         self._leagues = []
-        # for league_id in env.league_ids:
-        #     self._leagues.append(League(league_id=league_id, year=2026, espn_s2=env.espn_s2, swid=env.swid))
+        self._league_idx = 0
+        self._num_leagues = len(env.league_ids)
+        self._env = env
+        self._network = network
+
+    def update(self):
+        self._leagues = []
+        for league_id in self._env.league_ids:
+            self._leagues.append(self.League(league_id, self._network))
+
 
         # FIXME
         self.home_logo_fpath = "logos/503377474_3.bmp"
@@ -139,6 +241,9 @@ class Network(AbstractLogger):
         pool = socketpool.SocketPool(wifi.radio)
         self._requests = adafruit_requests.Session(pool, context)
 
+    def get(self, url: str, headers: dict[str, str]) -> adafruit_requests.Response:
+        return self._requests.get(url, headers=headers)
+
 
 class UI:
     """User Interface"""
@@ -203,7 +308,7 @@ class App:
     """Main Application Software"""
 
     def __init__(self, env: Env) -> None:
-        self._ff_data = FantasyData(env)
+        self._ff_data = FantasyData(env, Network(env))
         self.ui = UI(self._ff_data)
 
         self._fetch_timer = 300
@@ -211,7 +316,7 @@ class App:
 
     def run(self) -> None:
         self.ui.splash()
-        time.sleep(5)
+        self._ff_data.update()
         self.ui.box_scores()
         while True:
             pass
