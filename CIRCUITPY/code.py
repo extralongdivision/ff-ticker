@@ -55,7 +55,7 @@ class Env:
         return os.getenv("CIRCUITPY_WIFI_PASSWORD")
 
 
-class FantasyData:
+class FantasyData(AbstractLogger):
     """Fantasy Football Data"""
 
     class League(AbstractLogger):
@@ -75,6 +75,9 @@ class FantasyData:
                 self.away_score = a_score
                 self.week_num = week
 
+            def __str__(self) -> str:
+                return f"{self.home_abbv} ({self.home_score}) - ({self.away_score}) {self.away_abbv}"
+
         def __init__(self, league_id: int, network: "Network"):
             super().__init__()
             self._network = network
@@ -82,43 +85,47 @@ class FantasyData:
             self._headers = {"cookie": f"SWID={os.getenv('SWID')}; espn_s2={os.getenv('ESPN_S2')}"}
             self._year = ""
             self._update_year()
-            self._matchups = self._fetch_matchups()
+            self.matchups = self._fetch_matchups()
 
         def _fetch_matchups(self) -> list["Matchup"]:
             teams = self._fetch_teams()
-            week = teams["week"]
+            week = teams["week"] - 1 # TODO make this show current week live scores
             r = self._network.get(self._matchup_url, headers=self._headers)
             if not (r.status_code == 200):
                 self.logger.error(f"Failed to query ESPN Matchup API ({r.status_code})")
                 return []
 
-            match_data = json_stream.load(r.iter_content(32))
-            matches_data = []
+            match_data = json_stream.load(r.iter_content(4096))
+            matchups = []
             for m in match_data["schedule"]:
+                # have to access this first or else I'll get KeyError
+                away_team_id = m["away"]["teamId"]
+                away_total_points = m["away"]["totalPoints"]
+                try:
+                    away_points_by = m["away"]["pointsByScoringPeriod"][week]
+                except KeyError:  # the match is still UNDECIDED or not this week's matchup
+                    away_points_by = None
+
+                home_team_id = m["home"]["teamId"]
+                home_total_points = m["home"]["totalPoints"]
+                try:
+                    home_points_by = m["home"]["pointsByScoringPeriod"][week]
+                except KeyError:  # the match is still UNDECIDED or not this week's matchup
+                    home_points_by = None
+
                 if m["matchupPeriodId"] != week:
                     continue
-                matches_data.append(m)
-                break
 
-            matchups = []
-            for idx, match in enumerate(match_data):
-                matchups.append(self.Matchup(week=week))
-                matchup = matchups[idx]
-
-                home_team_id = match["home"]["teamId"]
-                matchup.home_logo_fpath = f"logos/{self._league_id}_{home_team_id}.bmp"
-                matchup.home_abbv = teams[int(home_team_id)]
-
-                away_team_id = match["away"]["teamId"]
+                matchup = self.Matchup(week=week)
+                matchup.away_score = away_total_points if away_points_by is None else away_points_by
                 matchup.away_logo_fpath = f"logos/{self._league_id}_{away_team_id}.bmp"
                 matchup.away_abbv = teams[int(away_team_id)]
-                if match["winner"] != "UNDECIDED":
-                    pass
-                matchup.home_score = 0.0
-                matchup.away_score = 0.0
-
-            print(m)
-            self.logger.info(m)
+                matchup.home_score = home_total_points if home_points_by is None else home_points_by
+                matchup.home_logo_fpath = f"logos/{self._league_id}_{home_team_id}.bmp"
+                matchup.home_abbv = teams[int(home_team_id)]
+                matchups.append(matchup)
+            r.close()
+            return matchups
 
         def _fetch_teams(self) -> dict:
             self.logger.debug("Fetching matchups...")
@@ -152,26 +159,63 @@ class FantasyData:
 
 
     def __init__(self, env: Env, network: "Network"):
+        super().__init__()
         self._leagues = []
         self._league_idx = 0
         self._num_leagues = len(env.league_ids)
+        self._matchup_idx = 0
+        self._num_matchups = 0
         self._env = env
         self._network = network
 
-    def update(self):
+    def fetch(self):
+        """New data from external APIs"""
         self._leagues = []
         for league_id in self._env.league_ids:
             self._leagues.append(self.League(league_id, self._network))
+        self._num_matchups = len(self._current_league.matchups)
+        self.logger.debug(f"Num leagues is {self._num_matchups}")
 
+        self.update()
 
-        # FIXME
-        self.home_logo_fpath = "logos/503377474_3.bmp"
-        self.home_abbv = "PRX"
-        self.home_score = 7.4
-        self.away_logo_fpath = "logos/503377474_1.bmp"
-        self.away_abbv = "JTS"
-        self.away_score = 0.0
-        self.week_num = 10
+    def update(self):
+        """Store current matchups"""
+        self.home_logo_fpath = self._current_matchup.home_logo_fpath
+        self.home_abbv = self._current_matchup.home_abbv
+        self.home_score = self._current_matchup.home_score
+        self.away_logo_fpath = self._current_matchup.away_logo_fpath
+        self.away_abbv = self._current_matchup.away_abbv
+        self.away_score = self._current_matchup.away_score
+        self.week_num = self._current_matchup.week_num
+
+    def next_league(self):
+        new_idx = self._league_idx + 1
+        self.logger.debug(f"New idx is {new_idx}")
+        if new_idx >= self._num_leagues:
+            self._league_idx = 0
+        else:
+            self._league_idx = new_idx
+        self.logger.debug(f"New league idx is {self._league_idx}")
+        self.update()
+
+    def next_matchup(self):
+        new_idx = self._matchup_idx + 1
+        self.logger.debug(f"New idx is {new_idx}")
+        if new_idx >= self._num_matchups:
+            self._matchup_idx = 0
+            self.next_league()
+        else:
+            self._matchup_idx = new_idx
+            self.update()
+        self.logger.debug(f"New matchup idx is {self._matchup_idx}")
+
+    @property
+    def _current_league(self) -> League:
+        return self._leagues[self._league_idx]
+
+    @property
+    def _current_matchup(self) -> "Matchup":
+        return self._current_league.matchups[self._matchup_idx]
 
 
 class Display(AbstractLogger):
@@ -247,22 +291,22 @@ class Network(AbstractLogger):
 
 class UI:
     """User Interface"""
-    def __init__(self, ffdata: FantasyData):
+    def __init__(self):
         self._display = Display()
-        self._ff_data = ffdata
+        # self._ff_data = ffdata
 
     @staticmethod
     def splash() -> None:
         print("Fantasy Football     Scoreboard")
 
-    def box_scores(self) -> None:
-        home_logo_fpath = self._ff_data.home_logo_fpath
-        home_abbv = self._ff_data.home_abbv
-        home_score = self._ff_data.home_score
-        away_logo_fpath = self._ff_data.away_logo_fpath
-        away_abbv = self._ff_data.away_abbv
-        away_score = self._ff_data.away_score
-        week_num = self._ff_data.week_num
+    def box_score(self, data: FantasyData) -> None:
+        home_logo_fpath = data.home_logo_fpath
+        home_abbv = data.home_abbv
+        home_score = data.home_score
+        away_logo_fpath = data.away_logo_fpath
+        away_abbv = data.away_abbv
+        away_score = data.away_score
+        week_num = data.week_num
 
         group = displayio.Group()
         team_name_y = 37
@@ -275,7 +319,7 @@ class UI:
         # "Home" team text
         home_text = Label(terminalio.FONT, color=self._display.font_color, text=home_abbv)
         home_text.anchor_point = (0.0, 0.5)
-        home_text.anchored_position = (5, team_name_y)
+        home_text.anchored_position = (1, team_name_y)
         group.append(home_text)
 
         # "Away" team logo
@@ -286,19 +330,19 @@ class UI:
         # "Away" team text
         away_text = Label(terminalio.FONT, color=self._display.font_color, text=away_abbv)
         away_text.anchor_point = (1.0, 0.5)
-        away_text.anchored_position = (124, team_name_y)
+        away_text.anchored_position = (128, team_name_y)
         group.append(away_text)
 
         # Score text
-        score_text = Label(terminalio.FONT, color=self._display.font_color, text=f"{home_score} - {away_score}")
-        score_text.anchor_point = (0.5, 0.0)
-        score_text.anchored_position = (self._display.width / 2, 14)
+        score_text = Label(terminalio.FONT, color=self._display.font_color, text=f"{home_score}-{away_score}")
+        score_text.anchor_point = (0.5, 0.5)
+        score_text.anchored_position = (self._display.width / 2, team_name_y)
         group.append(score_text)
 
         # Week text
         week_text = Label(terminalio.FONT, color=self._display.font_color, text=f"Week {week_num}")
         week_text.anchor_point = (0.5, 0.5)
-        week_text.anchored_position = (self._display.width / 2, team_name_y)
+        week_text.anchored_position = (self._display.width / 2, 14)
         group.append(week_text)
 
         self._display.framebuffer.root_group = group
@@ -309,17 +353,18 @@ class App:
 
     def __init__(self, env: Env) -> None:
         self._ff_data = FantasyData(env, Network(env))
-        self.ui = UI(self._ff_data)
+        self.ui = UI()
 
         self._fetch_timer = 300
         self._status_led = neopixel.NeoPixel(board.NEOPIXEL, 1, brightness = 0.3, auto_write=True)
 
     def run(self) -> None:
         self.ui.splash()
-        self._ff_data.update()
-        self.ui.box_scores()
+        self._ff_data.fetch()
         while True:
-            pass
+            self.ui.box_score(self._ff_data)
+            time.sleep(5)  # FIXME track time instead of sleeping
+            self._ff_data.next_matchup()
 
     @property
     def fetch_timer(self) -> int:
