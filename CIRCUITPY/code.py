@@ -333,11 +333,23 @@ class UI:
         away_text.anchored_position = (128, team_name_y)
         group.append(away_text)
 
-        # Score text
-        score_text = Label(terminalio.FONT, color=self._display.font_color, text=f"{home_score}-{away_score}")
-        score_text.anchor_point = (0.5, 0.5)
-        score_text.anchored_position = (self._display.width / 2, team_name_y)
-        group.append(score_text)
+        # Home score text
+        home_score_text = Label(terminalio.FONT, color=self._display.font_color, text=str(home_score))
+        home_score_text.anchor_point = (1, 0.5)
+        home_score_text.anchored_position = ((self._display.width / 2) - 4, team_name_y)
+        group.append(home_score_text)
+
+        # Dash text
+        dash_text = Label(terminalio.FONT, color=self._display.font_color, text=f"-")
+        dash_text.anchor_point = (0.5, 0.5)
+        dash_text.anchored_position = (self._display.width / 2, team_name_y)
+        group.append(dash_text)
+
+        # Away score text
+        away_score_text = Label(terminalio.FONT, color=self._display.font_color, text=str(away_score))
+        away_score_text.anchor_point = (0, 0.5)
+        away_score_text.anchored_position = ((self._display.width / 2) + 4, team_name_y)
+        group.append(away_score_text)
 
         # Week text
         week_text = Label(terminalio.FONT, color=self._display.font_color, text=f"Week {week_num}")
